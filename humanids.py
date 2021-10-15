@@ -1,8 +1,9 @@
 from typing import Optional
-import zipfile, sys, os, csv, io
+import zipfile, os, csv, io
 from make_gtfs_value_maps import * 
 from convert_ids import *
 from colors import *
+import argparse
 
 class FeedReplacementInfo:
     def __init__(self, field_name: str, values: Dict[str, str], special_field_names: Optional[Dict[str, List[str]]] = None):
@@ -11,10 +12,13 @@ class FeedReplacementInfo:
         self.special_field_names = special_field_names
 
 def convert_feed_ids():
-    if len(sys.argv) < 2:
-        print_red("No filename provided!")
-        exit()
-    filepath = sys.argv[1]
+    parser = argparse.ArgumentParser(description="Human-Friendly GTFS IDs")
+    parser.add_argument('filepath', action='store', type=str, help='Path to GTFS zip.')
+    parser.add_argument("--skip-trip-ids", dest="skip_trips", action="store_true", default=False)
+    parser.add_argument("--skip-route-ids", dest="skip_routes", action="store_true", default=False)
+    parser.add_argument("--skip-service-ids", dest="skip_service", action="store_true", default=False)
+    args = parser.parse_args()
+    filepath = args.filepath
     if not os.path.isfile(filepath):
         print_red("File does not exist!")
     gtfs_zipped = zipfile.ZipFile(filepath)
@@ -27,13 +31,25 @@ def convert_feed_ids():
     if len(tripid_map) == 0:
         print_red("No new trip_ids generated! Exiting...")
         exit()
+    replacements = []
+    if not args.skip_routes:
+        replacements.append(FeedReplacementInfo("route_id", routeid_map))
+    else:
+        print_blue("will NOT replace route_id")
+    if not args.skip_service: 
+        replacements.append(FeedReplacementInfo("service_id", service_id_map))
+    else: 
+        print_blue("will NOT replace service_id")
+    if not args.skip_trips:
+        replacements.append(FeedReplacementInfo("trip_id", tripid_map, {"runcut.txt": ["start_trip_id", "end_trip_id"]}))
+    else: 
+        print_blue("will NOT replace trip_id")
+    if len(replacements) == 0:
+        print_red("No replacements selected! Exiting...")
+        exit()
     generate_new_files(
         gtfs_zipped, 
-        [
-            FeedReplacementInfo("service_id", service_id_map), 
-            FeedReplacementInfo("route_id", routeid_map), 
-            FeedReplacementInfo("trip_id", tripid_map, {"runcut.txt": ["start_trip_id", "end_trip_id"]}),
-        ]
+        replacements
     )
 
 def generate_new_files(gtfs: zipfile.ZipFile, fields_to_replace: List[FeedReplacementInfo]):
