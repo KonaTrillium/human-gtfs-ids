@@ -9,6 +9,7 @@ def make_new_tripid_map(gtfs, first_stop_times: Dict[str, List], routes: Dict[st
     with gtfs.open("trips.txt", "r") as trips_file_raw:
         trips_file = io.TextIOWrapper(trips_file_raw)
         trips_csv = csv.DictReader(trips_file)
+        created_trip_ids = set()
         route_direction_counts = {}
         trips = list(trips_csv)
         sorted_trips = sorted(trips, key=lambda k: (k['block_id'], k['service_id'], first_stop_times[k['trip_id']]['departure_time']))
@@ -30,10 +31,11 @@ def make_new_tripid_map(gtfs, first_stop_times: Dict[str, List], routes: Dict[st
             # This is where the new trip ID comes together
             new_trip_id = route_name + "_" + direction_name + "-" + service_id + "_" + str(count) + "_" + time
             new_trip_id = new_trip_id.replace(" ", "-")
-            if new_trip_id in trip_id_map:
+            if new_trip_id in created_trip_ids:
                 print_red("Generated trip ID " + new_trip_id + " has already been created! Second original trip_id is " + row['trip_id'] + ". Will not create duplicates. Exiting...")
                 exit()
             trip_id_map[row['trip_id']] = new_trip_id
+            created_trip_ids.add(new_trip_id)
     return trip_id_map
 
 def make_new_service_id_map(gtfs):
@@ -96,16 +98,18 @@ def make_new_service_id_map(gtfs):
 
 def make_new_routeid_map(gtfs):
     output_ids = {}
+    created_ids = set()
     with gtfs.open("routes.txt") as file_raw:
         file_wrapper = io.TextIOWrapper(file_raw)
         file_csv = csv.DictReader(file_wrapper)
         for route in file_csv:
             new_id = route['route_short_name'] or route['route_long_name']
             new_id = new_id.replace(" ", "").replace("&", "-")
-            if new_id in output_ids:
+            if new_id in created_ids:
                 new_id = new_id + "-" + route['agency_id']
-            if new_id in output_ids:
+            if new_id in created_ids:
                 print_red("created duplicate route_id %s" % new_id)
                 exit()
             output_ids[route['route_id']] = new_id
+            created_ids.add(new_id)
     return output_ids
