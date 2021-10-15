@@ -12,8 +12,10 @@ def make_new_tripid_map(gtfs, first_stop_times: Dict[str, List], routes: Dict[st
         created_trip_ids = set()
         route_direction_counts = {}
         trips = list(trips_csv)
+        processed_trips = {}
         sorted_trips = sorted(trips, key=lambda k: (k['block_id'], k['service_id'], first_stop_times[k['trip_id']]['departure_time']))
         for row in sorted_trips:
+            processed_trips[row['trip_id']] = row
             route_info = routes[row['route_id']]
             route_name = route_info['route_short_name'] or route_info['route_long_name']
             if not route_name:
@@ -32,8 +34,19 @@ def make_new_tripid_map(gtfs, first_stop_times: Dict[str, List], routes: Dict[st
             new_trip_id = route_name + "_" + direction_name + "-" + service_id + "_" + str(count) + "_" + time
             new_trip_id = new_trip_id.replace(" ", "-")
             if new_trip_id in created_trip_ids:
-                print_red("Generated trip ID " + new_trip_id + " has already been created! Second original trip_id is " + row['trip_id'] + ". Will not create duplicates. Exiting...")
-                exit()
+                id_keys = list(trip_id_map.keys())
+                id_vals = list(trip_id_map.values())
+                first_trip_id = id_keys[id_vals.index(new_trip_id)]
+                if first_trip_id != row['trip_id']: #should always be true but just in case
+                    first_trip_info = processed_trips[first_trip_id]
+                    second_trip_info = processed_trips[row['trip_id']]
+                    if first_trip_info['block_id'] != second_trip_info['block_id']:
+                        created_trip_ids.remove(new_trip_id)
+                        trip_id_map[first_trip_id] = new_trip_id + "-" + first_trip_info['block_id']
+                        new_trip_id = new_trip_id + "-" + second_trip_info['block_id']
+                    else:
+                        print_red("Generated trip ID " + new_trip_id + " has already been created! Unable to resolve with block_id. Second original trip_id is " + row['trip_id'] + ", first is " + first_trip_id + ". Will not create duplicates. Exiting...")
+                        exit()
             trip_id_map[row['trip_id']] = new_trip_id
             created_trip_ids.add(new_trip_id)
     return trip_id_map
