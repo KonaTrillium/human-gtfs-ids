@@ -69,6 +69,7 @@ def make_new_service_id_map(gtfs):
             service_id = row['service_id']
             if service_id not in service_ids_seen_in_main_cal and service_id not in seen_exception_only_ids:
                 new_id_components.append((service_id, "", row['date']))
+                seen_exception_only_ids.add(service_id)
     
     service_id_map = {}
     seen_day_groups = [g for g in map(lambda k: k[1]+k[2]+k[3] if k[1] else None, new_id_components) if g]
