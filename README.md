@@ -8,6 +8,8 @@ Requires Python 3, tested and developed on 3.9.
 - Run `python3 humanids.py /path/to/gtfs.zip`
 - Modified files will export to current directory. 
 
+By default, script replaces all configured fields (`route_id`, `service_id`, and `trip_id`). Skip any of these by placing the appropriate argument after the file name: `--skip-trip-ids`, `--skip-route-ids`, or `--skip-service-ids`.
+
 ## Files
 - `humanids.py` contains the main execution logic. This is where you call methods to get dicts of new IDs and export new files. Send this info in a `FeedReplacementInfo` object, along with the field name to search for in every file, and any unique field names specific to certain files. 
 - `convert_ids.py` makes the maps of old IDs to new IDs. If you wish to modify the format of generated IDs, this is the place to do so. Take care to ensure uniqueness.
@@ -21,6 +23,7 @@ Requires Python 3, tested and developed on 3.9.
     - If a `service_id` is only found in `calendar_dates.txt` (i.e. it's an exception-only ID), the ID will become _the date that it first appeared in the file_. For Trillium's GTFS Manager, this means the ID of an exception-only calendar that applies on multiple holidays will become an ID of the first listed holiday. 
 - `trip_id` will become a concatenation of the route name, direction name (from `directions.txt`, uses `direction_id` if a name isn't found), altered `service_id`, sequence in block, and start time, separated by `_`.
   - This should always be unique. The script will fail if identical trip IDs are generated.
+  - May append `block_id` to preserve uniqueness when this is required.
   - Route names are determined by `route_short_name` or `route_long_name` from `routes.txt`, whichever is available. The script will failure if neither field is populated.
 - `route_id` will become the `route_short_name` or `route_long_name` from `routes.txt`, whichever is available, with certain values (like spaces or `&`) removed or altered. 
   - Some feeds contain multiple agencies, which may result in a route name that appears twice, which would lead to a duplicate route ID. Upon seeing the second route, the script will append the agency ID to that route, and will fail at that point if it's still not unique. 
